@@ -1,6 +1,8 @@
 import numpy as np
 import cv2
 import analogy
+from parameters import *
+from features import get_features
 
 """
 Frame work for looping through make_analogy
@@ -19,56 +21,26 @@ type : two types are implemented. The default is luminance since the paper predo
 """
 
 
-"""  Start User Defined Inputs  """
-remap_A = 1
-pyr_levels = 5
-kappa = 0
-# method can be pyflann_kmeans, pyflann_kdtree or sk_nn, default:pyflann_kmeans
-search_method = 'pyflann_kdtree'
-# type can be luminance or color, most effects work with luminance. Texture synthesis works well with color
-# default:luminance
-type = 'color'
-additional_pairs = False
-# type the path of your images here. You can change the output path at the bottom
-imgA, imgAp, imgB = analogy.read_images("src/A.jpg", "src/Ap.jpg", "src/B.jpg")
-if additional_pairs:  # add/remove a line for each pair you want to cat to A and Ap for training on a single loop
-    imgA, imgAp = analogy.add_pairs(imgA, imgAp, "src/A2.jpg", "src/Ap2.jpg")
-    imgA, imgAp = analogy.add_pairs(imgA, imgAp, "src/A3.jpg", "src/Ap3.jpg")
-"""  End User Defined Inputs  """
-
-# initialize pyramids (denoted by _L)
-if type == 'luminance':
-    A_L = analogy.get_pyramid(analogy.rgb2yiq(imgA), pyr_levels)
-    B_L = analogy.get_pyramid(analogy.rgb2yiq(imgB, feature='yiq'), pyr_levels)
-    Ap_L = analogy.get_pyramid(analogy.rgb2yiq(imgAp, feature='yiq'), pyr_levels)
-elif type == 'color':
-    A_L = analogy.get_pyramid(imgA, pyr_levels)
-    B_L = analogy.get_pyramid(imgB, pyr_levels)
-    Ap_L = analogy.get_pyramid(imgAp, pyr_levels)
+A_L = analogy.get_pyramid(imgA, pyr_levels)
+B_L = analogy.get_pyramid(imgB, pyr_levels)
+Ap_L = analogy.get_pyramid(imgAp, pyr_levels)
 
 Bp_L = []
 s = []
 for i in range(len(B_L)):
     Bp_L.append(np.zeros(B_L[i].shape))
-    s.append(np.zeros((B_L[i].shape[0],B_L[i].shape[1],2))-1)
+    s.append(np.full((B_L[i].shape[0],B_L[i].shape[1],2),-1))
 
 # process pyramid from coursest to finest
 for lvl in range(pyr_levels, -1, -1):
     print("Starting Level: ", lvl, "of ", pyr_levels)
 
-    if type == 'luminance':
-        Bp_L[lvl] = analogy.make_analogy(lvl, pyr_levels, A_L, Ap_L, B_L, Bp_L, s, kappa, search_method)
-        Bp_int = np.uint8(Bp_L[lvl][:, :, 0].copy() * 255)
-        cv2.imshow("bp", Bp_int)
-        cv2.waitKey(1)
-        imgBp = analogy.yiq2rgb(Bp_L[lvl])
 
-    elif type == 'color':
-        Bp_L[lvl] = analogy.make_analogy_color(lvl, pyr_levels, A_L, Ap_L, B_L, Bp_L, s, kappa, search_method)
-        Bp_int = np.uint8(Bp_L[lvl].copy() * 255)
-        cv2.imshow("bp", Bp_int)
-        cv2.waitKey(1)
-        imgBp = Bp_L[lvl]
+    Bp_L[lvl] = analogy.make_analogy_color(lvl, pyr_levels, A_L, Ap_L, B_L, Bp_L, s, kappa, search_method)
+    Bp_int = np.uint8(Bp_L[lvl].copy() * 255)
+    cv2.imshow("bp", Bp_int)
+    cv2.waitKey(1)
+    imgBp = Bp_L[lvl]
 
     imgBp = imgBp * 255.0
     imgBp[imgBp > 255] = 255
