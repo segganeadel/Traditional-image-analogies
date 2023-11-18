@@ -5,44 +5,8 @@ from features import get_features
 from parameters import search_method
 from search import nearest_neighbor
 
-"""
-To get pyflann to work I had to copy the x64 directory from Lib>site-packages>pyflann>lib>win32 
-into envs>python>Lib>site-packages>pyflann>win32. If you have difficulties just use sklearn, and remove references
-to pyflann.  
-"""
-
-def remap_y(imgA,imgB):
-    meanA = np.mean(imgA)
-    sdA = np.std(imgA)
-    meanB = np.mean(imgB)
-    sdB = np.std(imgB)
-
-    imgA_remapped = sdB/sdA*(imgA-meanA)+meanB
-
-    return imgA_remapped
 
 
-def rgb2yiq(image, remap=False, remap_target=None, feature='y'):
-    yiq_xform = np.array([[0.299, 0.587, 0.114],
-                          [0.596, -0.275, -0.321],
-                         [0.212, -0.523, 0.311]])
-    yiq = np.dot(image, yiq_xform.T.copy())
-
-    if remap:
-        remap_y(image, remap_target)
-    if feature == 'y':
-        return yiq[:,:,0]
-    elif feature == 'yiq':
-        return yiq
-
-
-def yiq2rgb(image):
-    rgb_xform = np.array([[1., 0.956, 0.619],
-                          [1., -0.272, -0.647],
-                          [1., -1.106, 1.703]])
-    rgb = np.dot(image, rgb_xform.T.copy())
-
-    return rgb
 
 
 def get_pyramid(image, levels):
@@ -55,19 +19,21 @@ def get_pyramid(image, levels):
     return pyr
 
 
-def make_analogy_color(lvl, Nlvl, A_L, Ap_L, B_L, Bp_L, s_L, kappa=0, method='pyflann'):
+def make_analogy_color(lvl, Nlvl, A_L, Ap_L, B_L, Bp_L, s_L, kappa=0):
 
-    A_f = get_features(rgb2yiq(A_L[lvl], remap=True, remap_target=B_L[lvl]))
-    Ap_f = get_features(rgb2yiq(Ap_L[lvl], remap=True, remap_target=B_L[lvl]), causal=True)
+    coarse = True
+
+    A_f = get_features(A_L[lvl], coarse=coarse)
+    Ap_f = get_features(Ap_L[lvl], causal=True, coarse=coarse)
 
     A_f = np.concatenate((A_f, Ap_f), 2)
     # initialize additional feature sets and B mats
     if lvl < Nlvl:
         Ad = cv2.resize(A_L[lvl+1], (A_L[lvl].shape[1],A_L[lvl].shape[0]), interpolation=cv2.INTER_CUBIC)
-        Ad_f = get_features(rgb2yiq(Ad, remap=True, remap_target=B_L[lvl+1]))
+        Ad_f = get_features(Ad, coarse=coarse)
         
         Apd = cv2.resize(Ap_L[lvl + 1], (Ap_L[lvl].shape[1], Ap_L[lvl].shape[0]), interpolation=cv2.INTER_CUBIC)
-        Apd_f = get_features(rgb2yiq(Apd, remap=True, remap_target=B_L[lvl+1]))
+        Apd_f = get_features(Apd, coarse=coarse)
 
         A_f = np.concatenate((A_f, Ad_f, Apd_f), 2)
 
@@ -83,19 +49,18 @@ def make_analogy_color(lvl, Nlvl, A_L, Ap_L, B_L, Bp_L, s_L, kappa=0, method='py
         Bp_L[lvl] = cv2.resize(B_L[lvl], dsize=(Bp_L[lvl].shape[1], Bp_L[lvl].shape[0]), interpolation=cv2.INTER_CUBIC)
 
 
-    B_patches = get_features(rgb2yiq(B_L[lvl]))
-    Bp_patches = get_features(rgb2yiq(Bp_L[lvl]), causal=True)
-    B_patches_f = np.concatenate((B_patches, Bp_patches), 2)
+    B_f = get_features(B_L[lvl], coarse=coarse)
+    Bp_f = get_features(Bp_L[lvl], causal=True, coarse=coarse)
+    B_f = np.concatenate((B_f, Bp_f), 2)
     if lvl < Nlvl:
         Bd = cv2.resize(B_L[lvl + 1], dsize=(B_L[lvl].shape[1], B_L[lvl].shape[0]), interpolation=cv2.INTER_CUBIC)
         Bpd = cv2.resize(Bp_L[lvl + 1], dsize=(Bp_L[lvl].shape[1], Bp_L[lvl].shape[0]), interpolation=cv2.INTER_CUBIC)
-        Bd_patches = get_features(rgb2yiq(Bd))
-        Bpd_patches = get_features(rgb2yiq(Bpd))
+        Bd_f = get_features(Bd, coarse=coarse)
+        Bpd_f = get_features(Bpd, coarse=coarse)
+        B_f = np.concatenate((B_f, Bd_f, Bpd_f), 2)
 
-        B_patches_f = np.concatenate((B_patches_f, Bd_patches, Bpd_patches), 2)
 
-
-    target_f_vect = B_patches_f.reshape(-1, B_patches_f.shape[-1])
+    target_f_vect = B_f.reshape(-1, B_f.shape[-1])
     print("target_f_vect shape", target_f_vect.shape)
 
     """  Begin Neighbor Search Methods  """
@@ -117,11 +82,10 @@ def make_analogy_color(lvl, Nlvl, A_L, Ap_L, B_L, Bp_L, s_L, kappa=0, method='py
             position = np.ravel_multi_index((x,y), (Bp_L[lvl].shape[0], Bp_L[lvl].shape[1]))
             neighbor_app,distance = neighbors[position],distances[position]
             distance_app = distance**2
-
             m,n = np.unravel_index(neighbor_app, (A_f.shape[0], A_f.shape[1]))
 
             if kappa > 0:
-                neighbor_coh, distance_coh = get_coherent(A_f, target_f_vect[position], x, y, s_L[lvl])
+                neighbor_coh, distance_coh = get_coherent(A_f, target_f_vect[position], x, y, s_L[lvl], coarse=coarse)
                 got_coh = (neighbor_coh != [-1, -1])
 
                 if got_coh and distance_coh <= distance_app * coh_fact:
@@ -138,11 +102,15 @@ def make_analogy_color(lvl, Nlvl, A_L, Ap_L, B_L, Bp_L, s_L, kappa=0, method='py
     return Bp_L[lvl]
 
 
-def get_coherent(A_f,B_f,q_x,q_y,s):  # tuned for 5x5 patches only
+def get_coherent(A_f,B_f,q_x,q_y,s,coarse = False):  # tuned for 5x5 patches only
     min_distance = np.inf
     cohxy = [-1, -1]
-    for i in range(-2, 3, 1):
-        for j in range(-2, 3, 1):
+
+    start = -1 if coarse else -2
+    stop = 2 if coarse else 3
+
+    for i in range(start, stop, 1):
+        for j in range(start, stop, 1):
 
             r_i,r_j = q_x+i,q_y+j
             if i == 0 and j == 0:  # only do causal portion
