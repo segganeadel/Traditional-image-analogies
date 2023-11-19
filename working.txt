@@ -1,0 +1,3 @@
+coarse always true
+color false
+kappa 20

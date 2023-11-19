@@ -14,7 +14,7 @@ def nearest_neighbor(source_f_vect,target_f_vect):
         neighbors, distances = flann.nn_index(target_f_vect, 1, checks=index['checks'])
         return neighbors, distances
     elif method == 'sk_nn':
-        index = NearestNeighbors(n_neighbors=1, algorithm='auto').fit(source_f_vect)
+        index = NearestNeighbors(n_neighbors=1, algorithm='kd_tree',metric='l2',n_jobs=-1).fit(source_f_vect)
         distances, neighbors = index.kneighbors(target_f_vect)
         return neighbors, distances
     else:

@@ -1,32 +1,26 @@
 import cv2
-import numpy as np
 
 def read_images(apath, appath, bpath):
-    imgA = cv2.imread(apath, cv2.IMREAD_UNCHANGED)
-    imgA = np.array(imgA)/255.0
 
-    imgAp = cv2.imread(appath, cv2.IMREAD_UNCHANGED)
-    imgAp = np.array(imgAp)/255.0
-
-    imgB = cv2.imread(bpath, cv2.IMREAD_UNCHANGED)
-    imgB = np.array(imgB)/255.0
+    imgA = cv2.imread(apath)
+    imgAp = cv2.imread(appath)
+    imgB = cv2.imread(bpath)
 
     return imgA, imgAp, imgB
 
 """  Start User Defined Inputs  """
-path = "src/"
-remap_A = 1
+path = "src/test/"
 pyr_levels = 5
-kappa = 70
+kappa = 0
 
 #if sensitive to color
-color = False
+color = True
 
-methods = ['pyflann_kmeans', 'pyflann_kdtree', 'sk_nn']
+methods = ['pyflann_kmeans', 'pyflann_kdtree', 'sk_nn', 'faiss']
 # method can be pyflann_kmeans, pyflann_kdtree or sk_nn, default:pyflann_kmeans
 search_method = methods[1]
 
 
 
 # type the path of your images here. You can change the output path at the bottom
-imgA, imgAp, imgB = read_images(path+"A.jpg", path+"Ap.jpg", path+"B.jpg")
+imgA, imgAp, imgB = read_images(path+"A.png", path+"Ap.png", path+"B3.png")

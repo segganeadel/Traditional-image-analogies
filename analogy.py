@@ -5,23 +5,9 @@ from features import get_features
 from parameters import search_method
 from search import nearest_neighbor
 
+def make_analogy(lvl, Nlvl, A_L, Ap_L, B_L, Bp_L, s_L, kappa=0):
 
-
-
-
-def get_pyramid(image, levels):
-    img = image.copy()
-    pyr = [img]
-    for i in range(levels):
-        img = cv2.pyrDown(img)
-        pyr.append(img)
-
-    return pyr
-
-
-def make_analogy_color(lvl, Nlvl, A_L, Ap_L, B_L, Bp_L, s_L, kappa=0):
-
-    coarse = True
+    coarse = True if lvl == Nlvl else False
 
     A_f = get_features(A_L[lvl], coarse=coarse)
     Ap_f = get_features(Ap_L[lvl], causal=True, coarse=coarse)
@@ -73,7 +59,6 @@ def make_analogy_color(lvl, Nlvl, A_L, Ap_L, B_L, Bp_L, s_L, kappa=0):
     # coh_fact is squared to get it closer to the performance as described in Hertzmann paper
     coh_fact = (1.0 + (2.0**(lvl - Nlvl)) * kappa)**2
 
-
     for x in range(Bp_L[lvl].shape[0]):
         if x%25 == 0:
             print("Rastering row", x, "of",Bp_L[lvl].shape[0])
@@ -121,7 +106,6 @@ def get_coherent(A_f,B_f,q_x,q_y,s,coarse = False):  # tuned for 5x5 patches onl
             sx,sy = s[r_i,r_j]
             if sx == -1 or sy == -1:
                 continue
-  
             #q_x - r_i = -i
             rx, ry = sx-i, sy-j
 
