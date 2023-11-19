@@ -1,7 +1,7 @@
 """  Start User Defined Inputs  """
 folder = 'test3'
 pyr_levels = 5
-kappa = 20
+kappa = 0
 
 #if sensitive to color
 color = True
